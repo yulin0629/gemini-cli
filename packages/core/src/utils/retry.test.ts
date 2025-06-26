@@ -243,8 +243,10 @@ describe('retryWithBackoff', () => {
       const fallbackCallback = vi.fn().mockResolvedValue('gemini-2.5-flash');
 
       let fallbackOccurred = false;
+      let attemptCount = 0;
       const mockFn = vi.fn().mockImplementation(async () => {
-        if (!fallbackOccurred) {
+        attemptCount++;
+        if (!fallbackOccurred && attemptCount <= 50) {
           const error: HttpError = new Error('Rate limit exceeded');
           error.status = 429;
           throw error;
@@ -253,7 +255,7 @@ describe('retryWithBackoff', () => {
       });
 
       const promise = retryWithBackoff(mockFn, {
-        maxAttempts: 3,
+        maxAttempts: 51,
         initialDelayMs: 100,
         onPersistent429: async (authType?: string) => {
           fallbackOccurred = true;
@@ -272,7 +274,7 @@ describe('retryWithBackoff', () => {
       expect(fallbackCallback).toHaveBeenCalledWith('oauth-personal');
 
       // Should retry again after fallback
-      expect(mockFn).toHaveBeenCalledTimes(3); // 2 initial attempts + 1 after fallback
+      expect(mockFn).toHaveBeenCalledTimes(51); // 50 initial attempts + 1 after fallback
     });
 
     it('should NOT trigger fallback for API key users', async () => {
@@ -306,13 +308,15 @@ describe('retryWithBackoff', () => {
 
     it('should reset attempt counter and continue after successful fallback', async () => {
       let fallbackCalled = false;
+      let attemptCount = 0;
       const fallbackCallback = vi.fn().mockImplementation(async () => {
         fallbackCalled = true;
         return 'gemini-2.5-flash';
       });
 
       const mockFn = vi.fn().mockImplementation(async () => {
-        if (!fallbackCalled) {
+        attemptCount++;
+        if (!fallbackCalled && attemptCount <= 50) {
           const error: HttpError = new Error('Rate limit exceeded');
           error.status = 429;
           throw error;
@@ -321,7 +325,7 @@ describe('retryWithBackoff', () => {
       });
 
       const promise = retryWithBackoff(mockFn, {
-        maxAttempts: 3,
+        maxAttempts: 51,
         initialDelayMs: 100,
         onPersistent429: fallbackCallback,
         authType: 'oauth-personal',
@@ -343,7 +347,7 @@ describe('retryWithBackoff', () => {
       });
 
       const promise = retryWithBackoff(mockFn, {
-        maxAttempts: 3,
+        maxAttempts: 51,
         initialDelayMs: 100,
         onPersistent429: fallbackCallback,
         authType: 'oauth-personal',
@@ -375,16 +379,18 @@ describe('retryWithBackoff', () => {
           const error: HttpError = new Error('Server error');
           error.status = 500;
           throw error;
-        } else {
-          // Remaining attempts: 429 errors
+        } else if (attempts <= 51) {
+          // Next 50 attempts: 429 errors (attempts 2-51)
           const error: HttpError = new Error('Rate limit exceeded');
           error.status = 429;
           throw error;
+        } else {
+          return 'success';
         }
       });
 
       const promise = retryWithBackoff(mockFn, {
-        maxAttempts: 5,
+        maxAttempts: 52,
         initialDelayMs: 100,
         onPersistent429: async (authType?: string) => {
           fallbackOccurred = true;
@@ -397,7 +403,7 @@ describe('retryWithBackoff', () => {
 
       await expect(promise).resolves.toBe('success');
 
-      // Should trigger fallback after 2 consecutive 429s (attempts 2-3)
+      // Should trigger fallback after 50 consecutive 429s (attempts 2-51)
       expect(fallbackCallback).toHaveBeenCalledWith('oauth-personal');
     });
   });
