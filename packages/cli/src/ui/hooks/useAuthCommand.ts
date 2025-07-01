@@ -27,11 +27,12 @@ export const useAuthCommand = (
   }, []);
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [shouldRefreshAuth, setShouldRefreshAuth] = useState(false);
 
   useEffect(() => {
     const authFlow = async () => {
       const authType = settings.merged.selectedAuthType;
-      if (isAuthDialogOpen || !authType) {
+      if (isAuthDialogOpen || !authType || !shouldRefreshAuth) {
         return;
       }
 
@@ -44,17 +45,19 @@ export const useAuthCommand = (
         openAuthDialog();
       } finally {
         setIsAuthenticating(false);
+        setShouldRefreshAuth(false);
       }
     };
 
     void authFlow();
-  }, [isAuthDialogOpen, settings, config, setAuthError, openAuthDialog]);
+  }, [isAuthDialogOpen, settings, config, setAuthError, openAuthDialog, shouldRefreshAuth]);
 
   const handleAuthSelect = useCallback(
     async (authType: AuthType | undefined, scope: SettingScope) => {
       if (authType) {
         await clearCachedCredentialFile();
         settings.setValue(scope, 'selectedAuthType', authType);
+        setShouldRefreshAuth(true); // Only trigger refresh when auth type is actually changed
       }
       setIsAuthDialogOpen(false);
       setAuthError(null);
