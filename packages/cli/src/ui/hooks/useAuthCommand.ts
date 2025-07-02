@@ -22,13 +22,15 @@ export const useAuthCommand = (
     settings.merged.selectedAuthType === undefined,
   );
 
+  const [needsReauth, setNeedsReauth] = useState(false);
+
   const openAuthDialog = useCallback(() => {
     setIsAuthDialogOpen(true);
-    setShouldRefreshAuth(true); // Mark that we need to re-authenticate
+    setNeedsReauth(true); // Mark that re-auth is needed
   }, []);
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [shouldRefreshAuth, setShouldRefreshAuth] = useState(true); // Allow initial auth
+  const [shouldRefreshAuth, setShouldRefreshAuth] = useState(true);
 
   useEffect(() => {
     const authFlow = async () => {
@@ -41,12 +43,13 @@ export const useAuthCommand = (
         setIsAuthenticating(true);
         await config.refreshAuth(authType);
         console.log(`Authenticated via "${authType}".`);
+        setShouldRefreshAuth(false);
+        setNeedsReauth(false); // Clear re-auth flag on success
       } catch (e) {
         setAuthError(`Failed to login. Message: ${getErrorMessage(e)}`);
         openAuthDialog();
       } finally {
         setIsAuthenticating(false);
-        setShouldRefreshAuth(false); // Prevent unnecessary re-auth
       }
     };
 
@@ -58,12 +61,18 @@ export const useAuthCommand = (
       if (authType) {
         await clearCachedCredentialFile();
         settings.setValue(scope, 'selectedAuthType', authType);
-        setShouldRefreshAuth(true); // Only trigger refresh when auth type is actually changed
+        setShouldRefreshAuth(true);
+      } else {
+        // User cancelled (pressed ESC)
+        // Only disable re-auth if it wasn't needed due to error
+        if (!needsReauth) {
+          setShouldRefreshAuth(false);
+        }
       }
       setIsAuthDialogOpen(false);
       setAuthError(null);
     },
-    [settings, setAuthError],
+    [settings, setAuthError, needsReauth],
   );
 
   const cancelAuthentication = useCallback(() => {
