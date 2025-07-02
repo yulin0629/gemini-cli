@@ -24,10 +24,11 @@ export const useAuthCommand = (
 
   const openAuthDialog = useCallback(() => {
     setIsAuthDialogOpen(true);
+    setShouldRefreshAuth(true); // Mark that we need to re-authenticate
   }, []);
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [shouldRefreshAuth, setShouldRefreshAuth] = useState(false);
+  const [shouldRefreshAuth, setShouldRefreshAuth] = useState(true); // Allow initial auth
 
   useEffect(() => {
     const authFlow = async () => {
@@ -45,7 +46,7 @@ export const useAuthCommand = (
         openAuthDialog();
       } finally {
         setIsAuthenticating(false);
-        setShouldRefreshAuth(false);
+        setShouldRefreshAuth(false); // Prevent unnecessary re-auth
       }
     };
 
