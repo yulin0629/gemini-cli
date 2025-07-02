@@ -54,7 +54,14 @@ export const useAuthCommand = (
     };
 
     void authFlow();
-  }, [isAuthDialogOpen, settings, config, setAuthError, openAuthDialog, shouldRefreshAuth]);
+  }, [
+    isAuthDialogOpen,
+    settings,
+    config,
+    setAuthError,
+    openAuthDialog,
+    shouldRefreshAuth,
+  ]);
 
   const handleAuthSelect = useCallback(
     async (authType: AuthType | undefined, scope: SettingScope) => {
