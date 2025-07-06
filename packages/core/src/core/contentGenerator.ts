@@ -12,6 +12,7 @@ import {
   EmbedContentResponse,
   EmbedContentParameters,
   GoogleGenAI,
+  setDefaultBaseUrls,
 } from '@google/genai';
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
@@ -121,6 +122,17 @@ export async function createContentGenerator(
     config.authType === AuthType.USE_GEMINI ||
     config.authType === AuthType.USE_VERTEX_AI
   ) {
+    // Check for custom base URLs from environment variables
+    const geminiBaseUrl = process.env.GEMINI_BASE_URL;
+    const vertexBaseUrl = process.env.VERTEX_BASE_URL;
+    
+    if (geminiBaseUrl || vertexBaseUrl) {
+      setDefaultBaseUrls({
+        ...(geminiBaseUrl && { geminiUrl: geminiBaseUrl }),
+        ...(vertexBaseUrl && { vertexUrl: vertexBaseUrl }),
+      });
+    }
+
     const googleGenAI = new GoogleGenAI({
       apiKey: config.apiKey === '' ? undefined : config.apiKey,
       vertexai: config.vertexai,
